@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>self-redux</title>
+  </head>
+  <body>
+    <button id="increment">+1</button>
+    <span id="count">0</span>
+    <button id="decrement">-1</button>
+    <script src="./redux.js"></script>
+    <script src="./middlewares/logger.js"></script>
+    <script src="./middlewares/thunk.js"></script>
+    <script>
+      var reducer = function (state, action) {
+        switch (action.type) {
+          case 'increment':
+            return state + 1
+          case 'decrement':
+            return state - 1
+          default:
+            return state
+        }
+      }
+
+      function enhancer(createStore) {
+        return function (reducer, preloadedState) {
+          var store = createStore(reducer, preloadedState)
+          console.log('原始的 store', store)
+          function _dispatch(action) {
+            if (typeof action === 'function') {
+              return action(dispatch)
+            }
+            dispatch(action)
+          }
+          return {
+            ...store,
+            dispatch: _dispatch, // 使用自定义的 dispatch
+          }
+        }
+      }
+
+      var rootReducer = combineReducers({ counter: reducer }) // 使用 combineReducers api 合并 reducer
+
+      var store = createStore(
+        rootReducer,
+        { counter: 10 },
+        // enhancer,
+        applyMiddleware(logger, thunk)
+      )
+      console.log(`store`, store)
+
+      function increment() {
+        return { type: 'increment' }
+      }
+
+      function decrement() {
+        return { type: 'decrement' }
+      }
+
+      var actions = bindActionCreators({ increment, decrement }, store.dispatch) //使用 bindActionCreators 简化 action 的调用方式
+
+      document.getElementById('increment').onclick = function () {
+        // store.dispatch({ type: 'increment' })
+        actions.increment()
+      }
+      document.getElementById('decrement').onclick = function () {
+        // store.dispatch({ type: 'decrement' })
+        actions.decrement()
+      }
+
+      store.subscribe(function () {
+        document.getElementById('count').innerHTML = store.getState().counter
+      })
+    </script>
+  </body>
+</html>
